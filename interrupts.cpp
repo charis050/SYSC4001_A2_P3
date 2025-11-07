@@ -5,7 +5,8 @@
  *
  */
 
-#include<interrupts.hpp>
+
+#include "interrupts.hpp"
 
 std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string> trace_file, int time, std::vector<std::string> vectors, std::vector<int> delays, std::vector<external_file> external_files, PCB current, std::vector<PCB> wait_queue) {
 
@@ -47,16 +48,47 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             auto [intr, time] = intr_boilerplate(current_time, 2, 10, vectors);
             execution += intr;
             current_time = time;
+            execution += std::to_string(current_time) + ", " + std::to_string(duration_intr)
+           + ", cloning the PCB\n";
+            current_time += duration_intr;
 
-            ///////////////////////////////////////////////////////////////////////////////////////////
-            //Add your FORK output here
+            execution += std::to_string(current_time) + ", 0, scheduler called\n";
+            execution += std::to_string(current_time) + ", 1, IRET\n";
+            current_time += 1;
+            
 
+            static int next_pid = 1;    //static ao it remains unchanged eveery time this function is run             
+            PCB parent = current;          
+            parent.state = "waiting";
 
+            wait_queue.push_back(parent);   // parent is now waiting in wait queue
 
-            ///////////////////////////////////////////////////////////////////////////////////////////
+            PCB child = current;                    
+            child.PID  = next_pid++;
+            child.PPID = parent.PID;
+            child.state = "running";
+
+            current = child;
+            //adding current program to system status
+            system_status += "time: " + std::to_string(current_time) + "; current trace: FORK, " + std::to_string(duration_intr) + "\n";
+            system_status += "PID: " + std::to_string(current.PID)
+               + " | program name: " + current.program_name
+               + " | partition: " + std::to_string(current.partition_number - 1)
+               + " | size: " + std::to_string(current.size)
+               + " | state: " + current.state + "\n\n";   
+
+            //adding all waiting programs to system status
+            for (int k = 0; k < wait_queue.size(); k++) {
+                    PCB p = wait_queue[k];
+                    system_status += "PID: " + std::to_string(p.PID)
+                            + " | program name: " + p.program_name
+                            + " | partition: " + std::to_string(p.partition_number - 1)
+                            + " | size: " + std::to_string(p.size)
+                            + " | state: " + p.state + "\n";
+                }
 
             //The following loop helps you do 2 things:
-            // * Collect the trace of the chile (and only the child, skip parent)
+            // * Collect the trace of the child (and only the child, skip parent)
             // * Get the index of where the parent is supposed to start executing from
             std::vector<std::string> child_trace;
             bool skip = true;
@@ -147,7 +179,7 @@ int main(int argc, char** argv) {
     print_external_files(external_files);
 
     //Make initial PCB (notice how partition is not assigned yet)
-    PCB current(0, -1, "init", 1, -1);
+    PCB current(0, -1, "init", 1, 0, "waiting", 0, 0 , 0);
     //Update memory (partition is assigned here, you must implement this function)
     if(!allocate_memory(&current)) {
         std::cerr << "ERROR! Memory allocation failed!" << std::endl;

@@ -25,12 +25,12 @@ struct memory_partition_t {
 };
 
 memory_partition_t memory[] = {
-    memory_partition_t(1, 40, "empty"),
-    memory_partition_t(2, 25, "empty"),
-    memory_partition_t(3, 15, "empty"),
-    memory_partition_t(4, 10, "empty"),
-    memory_partition_t(5, 8, "empty"),
-    memory_partition_t(6, 2, "empty")
+    memory_partition_t(1, 40, "free"),
+    memory_partition_t(2, 25, "free"),
+    memory_partition_t(3, 15, "free"),
+    memory_partition_t(4, 10, "free"),
+    memory_partition_t(5, 8, "free"),
+    memory_partition_t(6, 2, "free")
 };
 
 struct PCB{
@@ -39,9 +39,13 @@ struct PCB{
     std::string     program_name;
     unsigned int    size;
     int             partition_number;
+    std::string     state;
+    int             remaining_cpu_time_ms;
+    int             io_device_id;
+    int             remaining_io_time_ms;
 
-    PCB(unsigned int _pid, int _ppid, std::string _pn, unsigned int _size, int _part_num):
-        PID(_pid), PPID(_ppid), program_name(_pn), size(_size), partition_number(_part_num) {}
+    PCB(unsigned int _pid, int _ppid, std::string _pn, unsigned int _size, int _part_num, std::string _state, int _remaining_cpu, int io_id, int remaining_io):
+        PID(_pid), PPID(_ppid), program_name(_pn), size(_size), partition_number(_part_num), state(_state), remaining_cpu_time_ms(_remaining_cpu), io_device_id(io_id), remaining_io_time_ms(remaining_io) {}
 };
 
 struct external_file{
@@ -54,7 +58,7 @@ struct external_file{
 bool allocate_memory(PCB* current) {
     for(int i = 5; i >= 0; i--) { //Start from smallest partition
         //check is the code will fit and if the partition is empty
-        if(memory[i].size >= current->size && memory[i].code == "empty") {
+        if(memory[i].size >= current->size && memory[i].code == "free") {
             current->partition_number = memory[i].partition_number;
             memory[i].code = current->program_name;
             return true;
