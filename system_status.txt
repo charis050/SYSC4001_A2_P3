@@ -1,0 +1,11 @@
+time: 24; current trace: FORK, 10
+PID: 1 | program name: init | partition: 5 | size: 1 | state: running
+PID: 0 | program name: init | partition: 6 | size: 1 | state: waiting
+
+time: 247; current trace: EXEC program1, 50
+PID: 1 | program name: program1 | partition: 4 | size: 10 | state: running
+PID: 0 | program name: init | partition: 6 | size: 1 | state: waiting
+
+time: 620; current trace: EXEC program2, 25
+PID: 0 | program name: program2 | partition: 3 | size: 15 | state: running
+

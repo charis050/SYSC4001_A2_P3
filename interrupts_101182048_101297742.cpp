@@ -1,12 +1,12 @@
 /**
  *
- * @file interrupts.cpp
+ * @file interrupts_101182048_101297742.cpp
  * @author Sasisekhar Govind
  *
  */
 
 
-#include "interrupts.hpp"
+#include "interrupts_101182048_101297742.hpp"
 
 std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string> trace_file, int time, std::vector<std::string> vectors, std::vector<int> delays, std::vector<external_file> external_files, PCB current, std::vector<PCB> wait_queue) {
 
@@ -57,35 +57,44 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             current_time += 1;
             
 
-            static int next_pid = 1;    //static ao it remains unchanged eveery time this function is run             
+            static int next_pid = 1;    //static bc it remains unchanged eveery time this function is run             
             PCB parent = current;          
             parent.state = "waiting";
 
-            wait_queue.push_back(parent);   // parent is now waiting in wait queue
+            wait_queue.push_back(parent);  
 
             PCB child = current;                    
             child.PID  = next_pid++;
             child.PPID = parent.PID;
             child.state = "running";
 
+            child.size = parent.size;               
+
+            // try to allocate a free partition for the child
+            if (!allocate_memory(&child)) {
+                execution += std::to_string(current_time) + ", 0, FORK error: no partition for child\n";
+                // (you can choose to bail or continue; the sample assumes it succeeds)
+            }
+
             current = child;
             //adding current program to system status
             system_status += "time: " + std::to_string(current_time) + "; current trace: FORK, " + std::to_string(duration_intr) + "\n";
             system_status += "PID: " + std::to_string(current.PID)
                + " | program name: " + current.program_name
-               + " | partition: " + std::to_string(current.partition_number - 1)
+               + " | partition: " + std::to_string(current.partition_number)
                + " | size: " + std::to_string(current.size)
-               + " | state: " + current.state + "\n\n";   
+               + " | state: " + current.state + "\n";   
 
             //adding all waiting programs to system status
             for (int k = 0; k < wait_queue.size(); k++) {
                     PCB p = wait_queue[k];
                     system_status += "PID: " + std::to_string(p.PID)
                             + " | program name: " + p.program_name
-                            + " | partition: " + std::to_string(p.partition_number - 1)
+                            + " | partition: " + std::to_string(p.partition_number)
                             + " | size: " + std::to_string(p.size)
                             + " | state: " + p.state + "\n";
                 }
+            system_status += "\n";
 
             //The following loop helps you do 2 things:
             // * Collect the trace of the child (and only the child, skip parent)
@@ -121,9 +130,31 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
             }
             i = parent_index;
 
+    
             ///////////////////////////////////////////////////////////////////////////////////////////
             //With the child's trace, run the child (HINT: think recursion)
+            {
+            auto [child_exec, child_status, t_after] =
+                simulate_trace(child_trace,
+                            current_time,          
+                            vectors, delays, external_files,
+                            current,                
+                            wait_queue);            
 
+            execution     += child_exec;               
+            system_status += child_status;             
+            current_time   = t_after;                 
+            }
+            //restoring parent
+           for (int j = 0; j < wait_queue.size(); j++) {
+                if (wait_queue[j].PID == parent.PID) {
+                    wait_queue.erase(wait_queue.begin() + j);
+                    break;
+                }
+            }
+
+            current = parent;              
+            current.state = "running";  
 
 
             ///////////////////////////////////////////////////////////////////////////////////////////
@@ -136,6 +167,78 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
 
             ///////////////////////////////////////////////////////////////////////////////////////////
             //Add your EXEC output here
+                        // f) look up program size from external_files
+            int new_size = get_size(program_name, external_files);
+            if (new_size < 0) {
+                execution += std::to_string(current_time) + ", 0, EXEC error: program not found (" + program_name + ")\n";
+            } else {
+                // Snapshot old mapping
+                int old_partition = current.partition_number;
+
+                current.program_name = program_name;
+                current.size = new_size;
+
+                bool reuse_same = memory[old_partition - 1].size >= (unsigned)current.size;
+                if (reuse_same) {
+                    memory[old_partition - 1].code = current.program_name;
+                } else {
+                    // free old and allocate a new one
+                    PCB before = current;
+                    before.partition_number = old_partition;
+                    free_memory(&before);
+
+                    if (!allocate_memory(&current)) {
+                        execution += std::to_string(current_time) + ", 0, EXEC error: no suitable partition\n";
+                    }
+                }
+
+                // === Match the sample output wording/order ===
+                // "Program is N Mb large"
+                        
+                execution += std::to_string(current_time) + ", " + std::to_string(duration_intr)
+                 + ", Program is " + std::to_string(current.size) + " Mb large\n";
+                current_time += duration_intr;
+
+                // "loading program into memory  //NMb * 15ms/Mb = Tms"
+                int loader_ms = current.size * 15;   // adjust if your handout says otherwise
+                execution += std::to_string(current_time) + ", "
+                        + std::to_string(loader_ms)
+                        + ", loading program into memory\n";
+                current_time += loader_ms;
+
+                // "marking partition as occupied"
+                execution += std::to_string(current_time) + ", 3, marking partition as occupied\n";
+                current_time += 3;
+
+                // "updating PCB"
+                execution += std::to_string(current_time) + ", 6, updating PCB\n";
+                current_time += 6;
+
+                execution += std::to_string(current_time) + ", 0, scheduler called\n";
+                execution += std::to_string(current_time) + ", 1, IRET\n";
+                current_time += 1;
+
+                // === system_status snapshot (after IRET) ===
+                system_status += "time: " + std::to_string(current_time)
+                            +  "; current trace: EXEC " + current.program_name + ", " + std::to_string(duration_intr) + "\n";
+
+                // running first
+                system_status += "PID: " + std::to_string(current.PID)
+                            +  " | program name: " + current.program_name
+                            +  " | partition: " + std::to_string(current.partition_number)
+                            +  " | size: " + std::to_string(current.size)
+                            +  " | state: " + current.state + "\n";
+
+                for (int j = 0; j < (int)wait_queue.size(); j++) {
+                    const PCB& p = wait_queue[j];
+                    system_status += "PID: " + std::to_string(p.PID)
+                                +  " | program name: " + p.program_name
+                                +  " | partition: " + std::to_string(p.partition_number)
+                                +  " | size: " + std::to_string(p.size)
+                                +  " | state: " + p.state + "\n";
+                }
+                system_status += "\n";
+            }
 
 
 
@@ -152,8 +255,12 @@ std::tuple<std::string, std::string, int> simulate_trace(std::vector<std::string
 
             ///////////////////////////////////////////////////////////////////////////////////////////
             //With the exec's trace (i.e. trace of external program), run the exec (HINT: think recursion)
+            auto [exec_exec, exec_status, t_after] =
+            simulate_trace(exec_traces, current_time, vectors, delays, external_files, current, wait_queue);
 
-
+            execution     += exec_exec;
+            system_status += exec_status;
+            current_time   = t_after;
 
             ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -187,11 +294,7 @@ int main(int argc, char** argv) {
 
     std::vector<PCB> wait_queue;
 
-    /******************ADD YOUR VARIABLES HERE*************************/
-
-
-    /******************************************************************/
-
+  
     //Converting the trace file into a vector of strings.
     std::vector<std::string> trace_file;
     std::string trace;
