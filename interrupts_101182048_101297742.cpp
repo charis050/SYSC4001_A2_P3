@@ -312,8 +312,8 @@ int main(int argc, char** argv) {
 
     input_file.close();
 
-    write_output(execution, "execution.txt");
-    write_output(system_status, "system_status.txt");
+    write_output(execution, "execution4.txt");
+    write_output(system_status, "system_status4.txt");
 
     return 0;
 }

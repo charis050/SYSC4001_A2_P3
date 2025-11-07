@@ -1,0 +1,2 @@
+EXEC program5, 20
+CPU, 100

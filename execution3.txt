@@ -1,0 +1,48 @@
+0, 1, switch to kernel mode
+1, 10, context saved
+11, 1, find vector 2 in memory position 0x0004
+12, 1, load address 0X0695 into the PC
+13, 12, cloning the PCB
+25, 0, scheduler called
+25, 1, IRET
+26, 1, switch to kernel mode
+27, 10, context saved
+37, 1, find vector 3 in memory position 0x0006
+38, 1, load address 0X042B into the PC
+39, 0, EXEC error: program not found (program6)
+39, 1, switch to kernel mode
+40, 10, context saved
+50, 1, find vector 4 in memory position 0x0008
+51, 1, load address 0X0292 into the PC
+52, 250, SYSCALL ISR (ADD STEPS HERE)
+302, 1, IRET
+303, 25, CPU Burst
+328, 1, switch to kernel mode
+329, 10, context saved
+339, 1, find vector 3 in memory position 0x0006
+340, 1, load address 0X042B into the PC
+341, 0, EXEC error: program not found (program8)
+341, 1, switch to kernel mode
+342, 10, context saved
+352, 1, find vector 2 in memory position 0x0004
+353, 1, load address 0X0695 into the PC
+354, 10, cloning the PCB
+364, 0, scheduler called
+364, 1, IRET
+365, 25, CPU Burst
+390, 35, CPU Burst
+425, 35, CPU Burst
+460, 1, switch to kernel mode
+461, 10, context saved
+471, 1, find vector 2 in memory position 0x0004
+472, 1, load address 0X0695 into the PC
+473, 18, cloning the PCB
+491, 0, scheduler called
+491, 1, IRET
+492, 1, switch to kernel mode
+493, 10, context saved
+503, 1, find vector 3 in memory position 0x0006
+504, 1, load address 0X042B into the PC
+505, 0, EXEC error: program not found (program7)
+505, 90, CPU Burst
+595, 60, CPU Burst
